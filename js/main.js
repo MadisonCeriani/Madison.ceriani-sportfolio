@@ -91,16 +91,42 @@
     if (!input) return;
     var filenameEl = document.getElementById('resume-filename');
     var viewLink   = document.getElementById('resume-view-link');
+    var currentObjectUrl = null;
+
+    /* Open the stored blob URL in a new tab when the view button is clicked.
+       The href attribute is never set to user-derived data; navigation is
+       handled entirely here after an explicit protocol check. */
+    if (viewLink) {
+      viewLink.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (currentObjectUrl && currentObjectUrl.indexOf('blob:') === 0) {
+          window.open(currentObjectUrl, '_blank', 'noopener,noreferrer');
+        }
+      });
+    }
 
     input.addEventListener('change', function () {
       var file = this.files && this.files[0];
       if (!file) return;
       if (filenameEl) filenameEl.textContent = file.name;
 
+      /* Revoke the previous object URL to prevent memory leaks. */
+      if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+        currentObjectUrl = null;
+      }
+
+      /* URL.createObjectURL always returns a blob: URL; store it only in a
+         JS variable so that no user-derived value is ever written to a DOM
+         property or attribute. */
       if (viewLink) {
         var url = URL.createObjectURL(file);
-        viewLink.href = url;
-        viewLink.style.display = 'inline-flex';
+        if (typeof url === 'string' && url.indexOf('blob:') === 0) {
+          currentObjectUrl = url;
+          viewLink.style.display = 'inline-flex';
+        } else {
+          URL.revokeObjectURL(url);
+        }
       }
     });
   });
